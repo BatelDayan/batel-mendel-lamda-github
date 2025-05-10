@@ -12,23 +12,70 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
         
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: il-central-1
-          
       - name: Zip Lambda function
         run: zip function.zip lambda.py
         
-      - name: Deploy to AWS Lambda
-        uses: appleboy/lambda-action@v0.1.7
+      - name: Deploy to AWS Lambda with retry
+        id: deploy
+        uses: actions/github-script@v6
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.REGION }}
         with:
-          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws_region: il-central-1
-          function_name: batel-test
-          zip_file: function.zip
-          debug: true
-          timeout: 60
+          script: |
+            const { execSync } = require('child_process');
+            
+            // Maximum number of retries
+            const maxRetries = 5;
+            // Initial delay in seconds
+            let delay = 10;
+            
+            let attempt = 0;
+            let success = false;
+            
+            while (attempt < maxRetries && !success) {
+              attempt++;
+              try {
+                console.log(`Attempt ${attempt} - Deploying Lambda function...`);
+                
+                // Try to update the Lambda function
+                const output = execSync(`aws lambda update-function-code \
+                  --function-name batel-test \
+                  --zip-file fileb://function.zip`, 
+                  { encoding: 'utf8' }
+                );
+                
+                console.log("Deployment successful!");
+                console.log(output);
+                success = true;
+              } catch (error) {
+                console.log(`Deployment attempt ${attempt} failed:`);
+                console.log(error.message);
+                
+                if (error.message.includes('ResourceConflictException') && attempt < maxRetries) {
+                  console.log(`Waiting ${delay} seconds before retry...`);
+                  // Wait before retrying
+                  await new Promise(resolve => setTimeout(resolve, delay * 1000));
+                  // Exponential backoff - double the delay for next attempt
+                  delay *= 2;
+                } else if (attempt >= maxRetries) {
+                  console.log(`Maximum retries (${maxRetries}) reached. Giving up.`);
+                  process.exit(1);
+                } else {
+                  // If it's not a conflict error, don't retry
+                  console.log("Non-conflict error occurred, failing.");
+                  process.exit(1);
+                }
+              }
+            }
+      
+      - name: Verify Lambda function
+        if: success()
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.REGION }}
+        run: |
+          aws lambda get-function --function-name batel-test
+          echo "Deployment verification successful!"
