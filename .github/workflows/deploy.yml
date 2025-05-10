@@ -1,0 +1,28 @@
+name: Deploy to AWS Lambda
+
+on:
+  push:
+    paths:
+      - lambda.py  # Trigger only if lambda.py changes
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Zip Lambda function
+        run: zip function.zip lambda.py
+
+      - name: Deploy to AWS Lambda
+        uses: appleboy/lambda-action@v0.1.7
+        with:
+          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          region: ${{ secrets.REGION }}
+          function_name: your-lambda-function-name
+          zip_file: function.zip
