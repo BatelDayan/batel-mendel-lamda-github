@@ -4,6 +4,6 @@ def lambda_handler(event, context):
     return {
         "statusCode": 200,
 
-        # Qute comment ;^)
+        # Qute comment ;^)-
         "body": json.dumps("Hayyy there! 👻") # ; )
     }
