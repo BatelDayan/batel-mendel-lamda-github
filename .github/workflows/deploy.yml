@@ -17,7 +17,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.REGION }}
+          aws-region: il-central-1
           
       - name: Zip Lambda function
         run: zip function.zip lambda.py
@@ -27,22 +27,8 @@ jobs:
         with:
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws_region: ${{ secrets.REGION }}
+          aws_region: il-central-1
           function_name: batel-test
           zip_file: function.zip
           debug: true
-          timeout: 60  # Increase timeout for Lambda function updating process
-          
-      - name: Verify Lambda function
-        if: success()
-        run: |
-          aws lambda get-function --function-name batel-test
-          echo "Deployment successful!"
-          
-      - name: Report failure details
-        if: failure()
-        run: |
-          echo "Deployment failed. Checking Lambda function status..."
-          aws lambda get-function --function-name batel-test || echo "Function may not exist or permissions issue"
-          echo "Checking CloudWatch logs for any errors..."
-          aws logs describe-log-groups --log-group-name-prefix /aws/lambda/batel-test || echo "Could not retrieve logs"
+          timeout: 60
