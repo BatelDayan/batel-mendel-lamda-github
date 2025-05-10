@@ -19,7 +19,7 @@ jobs:
         python-version: '3.10'  # adjust to your needs
 
     - name: Zip Lambda function
-      run: zip function.zip lambda_function.py
+      run: zip function.zip lambda.py
 
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v2
