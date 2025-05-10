@@ -1,4 +1,4 @@
-#action 6
+#action 5
 import json
 
 def lambda_handler(event, context):
